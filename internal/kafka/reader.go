@@ -3,16 +3,24 @@ package kafka
 import (
 	c "context"
 	"encoding/json"
-	"github.com/segmentio/kafka-go"
 	"l0/internal/config"
 	"l0/internal/models"
+
+	"github.com/segmentio/kafka-go"
 )
 
-type Reader[T models.Order] struct {
+type Reader struct {
 	r *kafka.Reader
 }
 
-func NewReader[T models.Order](cfg config.ReaderConfig, brokers []string) Reader[T] {
+type Message struct {
+	Value models.Order
+	Raw   kafka.Message
+}
+
+type CommitFunc func(ctx c.Context, m kafka.Message) error
+
+func NewReader(cfg config.ReaderConfig, brokers []string) Reader {
 	var startOffset int64
 	switch cfg.StartOffset {
 	case "earliest":
@@ -23,7 +31,7 @@ func NewReader[T models.Order](cfg config.ReaderConfig, brokers []string) Reader
 		startOffset = kafka.LastOffset // fallback
 	}
 
-	return Reader[T]{
+	return Reader{
 		kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        brokers,
 			GroupID:        cfg.GroupID,
@@ -36,9 +44,12 @@ func NewReader[T models.Order](cfg config.ReaderConfig, brokers []string) Reader
 	}
 }
 
-func (r Reader[T]) Messages(ctx c.Context) (<-chan T, <-chan error) {
-	msgCh := make(chan T)
-	errCh := make(chan error)
+func (r Reader) Messages(ctx c.Context) (<-chan Message, <-chan error, CommitFunc) {
+	msgCh := make(chan Message)
+	errCh := make(chan error, 1)
+	commit := func(ctx c.Context, m kafka.Message) error {
+		return r.r.CommitMessages(ctx, m)
+	}
 
 	go func() {
 		defer close(msgCh)
@@ -50,26 +61,29 @@ func (r Reader[T]) Messages(ctx c.Context) (<-chan T, <-chan error) {
 				if ctx.Err() != nil {
 					return
 				}
-				errCh <- err
+				select {
+				case errCh <- err:
+				case <-ctx.Done():
+				}
 				return
 			}
 
-			var record T
-			if err = json.Unmarshal(m.Value, &record); err != nil {
-				errCh <- err
+			var order models.Order
+			if err := json.Unmarshal(m.Value, &order); err != nil {
+				select {
+				case errCh <- err:
+				case <-ctx.Done():
+				}
 				continue
 			}
+
 			select {
+			case msgCh <- Message{Value: order, Raw: m}:
 			case <-ctx.Done():
 				return
-			case msgCh <- record:
-				if err = r.r.CommitMessages(ctx, m); err != nil {
-					errCh <- err
-					return
-				}
 			}
 		}
 	}()
 
-	return msgCh, errCh
+	return msgCh, errCh, commit
 }

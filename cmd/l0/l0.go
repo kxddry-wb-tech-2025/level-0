@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"errors"
+	"l0/internal/config"
+	"l0/internal/handlers"
+	"l0/internal/kafka"
+	"l0/internal/storage/cache"
+	"l0/internal/storage/postgres"
+	"net/http"
+
 	initCfg "github.com/kxddry/go-utils/pkg/config"
 	initLog "github.com/kxddry/go-utils/pkg/logger"
 	"github.com/kxddry/go-utils/pkg/logger/handlers/sl"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"l0/internal/config"
-	"l0/internal/handlers"
-	"l0/internal/kafka"
-	"l0/internal/models"
-	"l0/internal/storage/cache"
-	"l0/internal/storage/postgres"
-	"net/http"
 )
 
 func main() {
@@ -35,10 +35,10 @@ func main() {
 		panic(err)
 	}
 
-	kr := kafka.NewReader[models.Order](cfg.Kafka.Reader, cfg.Kafka.Brokers)
-	dlq := kafka.NewWriter[models.Order](cfg.Kafka.Writer, cfg.Kafka.Brokers)
-	msgCh, errCh := kr.Messages(ctx)
-	saveErrCh := handlers.HandleSaves(ctx, st, msgCh, dlq)
+	kr := kafka.NewReader(cfg.Kafka.Reader, cfg.Kafka.Brokers)
+	dlq := kafka.NewWriter(cfg.Kafka.Writer, cfg.Kafka.Brokers)
+	msgCh, errCh, commitFunc := kr.Messages(ctx)
+	saveErrCh := handlers.HandleSaves(ctx, log, st, msgCh, dlq, commitFunc)
 
 	handlers.HandleErrors(ctx, log, errCh)
 	handlers.HandleErrors(ctx, log, saveErrCh)
