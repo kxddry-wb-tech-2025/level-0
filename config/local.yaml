@@ -6,3 +6,12 @@ storage:
   user: postgres
   dbname: l0
   sslmode: disable
+
+kafka:
+  brokers: [localhost:9092]
+  reader:
+    topic: orders
+    group_id: app
+  writer:
+    topic: dlq
+    client_id: app
