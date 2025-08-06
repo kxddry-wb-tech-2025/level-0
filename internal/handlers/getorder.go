@@ -2,16 +2,16 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"l0/internal/models"
+	"l0/internal/storage"
 	"net/http"
 )
 
 type OrderGetter interface {
 	GetOrder(context.Context, string) (*models.Order, error)
-}
-type OrderSaver interface {
-	SaveOrder(context.Context, *models.Order) error
 }
 
 type Cacher interface {
@@ -35,6 +35,9 @@ func GetOrderHandler(getter OrderGetter, cacher Cacher) echo.HandlerFunc {
 
 		order, err := getter.GetOrder(ctx, id)
 		if err != nil {
+			if errors.Is(err, storage.ErrOrderNotFound) {
+				return c.String(http.StatusNotFound, fmt.Sprintf("order %s not found", id))
+			}
 			return c.String(http.StatusInternalServerError, err.Error())
 		}
 		cacher.SaveOrder(ctx, order)

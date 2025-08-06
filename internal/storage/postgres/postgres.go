@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
+	"golang.org/x/net/context"
 	"l0/internal/config"
 	"l0/internal/models"
+	"l0/internal/storage"
 )
 
 func fmterr(op string, err error) error {
@@ -135,6 +137,9 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 		&order.OrderUID, &order.TrackNumber, &order.Entry, &deliveryId, &transaction, &order.Locale, &order.InternalSignature, &order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmterr(op, storage.ErrOrderNotFound)
+		}
 		return nil, fmterr(op, err)
 	}
 
@@ -197,4 +202,26 @@ func NewStorage(s config.Storage) (*Storage, error) {
 		return nil, fmterr(op, err)
 	}
 	return &Storage{db: db}, db.Ping()
+}
+
+func (s *Storage) AllOrderUIDs(ctx context.Context) ([]string, error) {
+	const op = "storage.postgres.AllOrderUIDs"
+	rows, err := s.db.QueryContext(ctx, `SELECT order_uid FROM orders ORDER BY order_uid`)
+	if err != nil {
+		return nil, fmterr(op, err)
+	}
+	defer rows.Close()
+	var uids []string
+	for rows.Next() {
+		var uid string
+		err = rows.Scan(&uid)
+		if err != nil {
+			return nil, fmterr(op, err)
+		}
+		uids = append(uids, uid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmterr(op, err)
+	}
+	return uids, nil
 }

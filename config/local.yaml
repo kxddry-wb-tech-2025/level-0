@@ -1,6 +1,8 @@
+env: local
+
 storage:
-  host: db
+  host: localhost
   port: 5432
   user: postgres
-  dbname: postgres
+  dbname: l0
   sslmode: disable

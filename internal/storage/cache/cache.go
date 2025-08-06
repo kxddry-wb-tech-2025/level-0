@@ -26,3 +26,10 @@ func (c *Cache) GetOrder(ctx c.Context, orderId string) (*models.Order, error) {
 	}
 	return &value, nil
 }
+
+func (c *Cache) LoadOrders(ctx c.Context, orders []*models.Order) error {
+	for _, order := range orders {
+		_ = c.SaveOrder(ctx, order)
+	}
+	return nil
+}
