@@ -71,7 +71,7 @@ func (r Reader) Messages(ctx c.Context) (<-chan Message, <-chan error, CommitFun
 			var order models.Order
 			if err := json.Unmarshal(m.Value, &order); err != nil {
 				select {
-				case errCh <- err:
+				case errCh <- err: // валидация джейсонов
 				case <-ctx.Done():
 				}
 				continue

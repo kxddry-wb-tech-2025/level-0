@@ -96,6 +96,8 @@ func (c *Cache) GetOrder(ctx c.Context, orderId string) (*models.Order, error) {
 		return nil, storage.ErrOrderNotFound
 	}
 
+	c.lru.MoveToFront(entry.lruElem)
+
 	return &entry.order, nil
 }
 

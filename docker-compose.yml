@@ -42,6 +42,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     expose: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   migrator:
     build:
@@ -55,7 +60,8 @@ services:
       - ./config/migrations.yaml:/app/migrations.yaml
       - ./migrations/:/migrations/
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   sender:
     build:
@@ -68,8 +74,10 @@ services:
     volumes:
       - ./config/sender.yaml:/app/config.yaml
     depends_on:
-      - init-kafka
-      - kafka
+      init-kafka:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
 
   kafka:
       image: apache/kafka:latest
