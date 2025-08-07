@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/lib/pq"
-	"golang.org/x/net/context"
 	"l0/internal/config"
 	"l0/internal/models"
 	"l0/internal/storage"
+
+	_ "github.com/lib/pq"
+	"golang.org/x/net/context"
 )
 
 func fmterr(op string, err error) error {
@@ -30,14 +31,7 @@ func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) (err error) {
 	if err != nil {
 		return fmterr(op, err)
 	}
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-			panic(p)
-		} else if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	// check if user exists
 	var (
@@ -119,14 +113,7 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 	if err != nil {
 		return nil, fmterr(op, err)
 	}
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-			panic(p)
-		} else if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	defer func() { _ = tx.Rollback() }()
 
 	var (
 		deliveryId  uint
@@ -173,7 +160,7 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 	if err != nil {
 		return nil, fmterr(op, err)
 	}
-	defer items.Close()
+	defer func() { _ = items.Close() }()
 	for items.Next() {
 		item := models.Item{}
 		err = items.Scan(&item.ChrtID, &item.TrackNumber, &item.Price, &item.RID, &item.Name, &item.Sale, &item.Size, &item.TotalPrice, &item.NmID, &item.Brand, &item.Status)
@@ -210,7 +197,7 @@ func (s *Storage) AllOrderUIDs(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmterr(op, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var uids []string
 	for rows.Next() {
 		var uid string
@@ -224,4 +211,30 @@ func (s *Storage) AllOrderUIDs(ctx context.Context) ([]string, error) {
 		return nil, fmterr(op, err)
 	}
 	return uids, nil
+}
+
+func (s *Storage) AllOrders(ctx context.Context) ([]*models.Order, error) {
+	const op = "storage.postgres.AllOrders"
+	uids, err := s.db.QueryContext(ctx, `SELECT order_uid FROM orders ORDER BY order_uid`)
+	if err != nil {
+		return nil, fmterr(op, err)
+	}
+	defer func() { _ = uids.Close() }()
+	var orders []*models.Order
+	for uids.Next() {
+		var uid string
+		err = uids.Scan(&uid)
+		if err != nil {
+			return nil, fmterr(op, err)
+		}
+		order, err := s.GetOrder(ctx, uid)
+		if err != nil {
+			return nil, fmterr(op, err)
+		}
+		orders = append(orders, order)
+	}
+	if err := uids.Err(); err != nil {
+		return nil, fmterr(op, err)
+	}
+	return orders, nil
 }

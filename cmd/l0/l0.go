@@ -9,6 +9,9 @@ import (
 	"l0/internal/storage/cache"
 	"l0/internal/storage/postgres"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	initCfg "github.com/kxddry/go-utils/pkg/config"
 	initLog "github.com/kxddry/go-utils/pkg/logger"
@@ -18,7 +21,8 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var cfg config.Config
 	initCfg.MustParseConfig(&cfg)
 	log := initLog.SetupLogger(cfg.Env)
@@ -28,7 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cacher := cache.NewCache()
+	cacher := cache.NewCache(cfg.Cache.TTL, cfg.Cache.Limit)
 
 	err = handlers.LoadCache(ctx, cacher, st)
 	if err != nil {
@@ -47,15 +51,31 @@ func main() {
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
-		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+		AllowMethods: []string{http.MethodGet}, // only GET allowed
 	}))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestID())
+	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{Timeout: cfg.Server.Timeout}))
+
+	srv := &http.Server{
+		Addr:         cfg.Server.Address,
+		Handler:      e,
+		ReadTimeout:  cfg.Server.Timeout,
+		WriteTimeout: cfg.Server.Timeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
+	}
 
 	e.GET("/order/:id", handlers.GetOrderHandler(st, cacher))
 
-	if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("failed to start", sl.Err(err))
 	}
+
+	// graceful shutdown
+	down := make(chan os.Signal, 1)
+	signal.Notify(down, os.Signal(syscall.SIGTERM), os.Signal(syscall.SIGINT))
+	<-down
+	log.Info("shutting down")
+
 }

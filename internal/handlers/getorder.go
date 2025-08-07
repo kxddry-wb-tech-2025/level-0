@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/labstack/echo/v4"
 	"l0/internal/models"
 	"l0/internal/storage"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 type OrderGetter interface {
@@ -17,6 +18,7 @@ type OrderGetter interface {
 type Cacher interface {
 	OrderGetter
 	OrderSaver
+	LoadOrders(context.Context, []*models.Order) error
 }
 
 func GetOrderHandler(getter OrderGetter, cacher Cacher) echo.HandlerFunc {
@@ -40,7 +42,7 @@ func GetOrderHandler(getter OrderGetter, cacher Cacher) echo.HandlerFunc {
 			}
 			return c.String(http.StatusInternalServerError, err.Error())
 		}
-		cacher.SaveOrder(ctx, order)
+		_ = cacher.SaveOrder(ctx, order) // nil always
 		return c.JSON(http.StatusOK, order)
 	}
 }

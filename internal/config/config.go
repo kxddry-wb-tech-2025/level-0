@@ -6,6 +6,8 @@ type Config struct {
 	Env     string  `yaml:"env" env-default:"dev"` // local, dev, prod
 	Storage Storage `yaml:"storage"`
 	Kafka   Kafka   `yaml:"kafka"`
+	Server  Server  `yaml:"server"`
+	Cache   Cache   `yaml:"cache"`
 }
 type Storage struct {
 	Host     string `yaml:"host" env-required:"true"`
@@ -14,6 +16,17 @@ type Storage struct {
 	Password string `env:"POSTGRES_PASSWORD" env-required:"true"`
 	DBName   string `yaml:"dbname" env-required:"true"`
 	SSLMode  string `yaml:"sslmode" env-default:"require"`
+}
+
+type Server struct {
+	Address     string        `yaml:"address" env-required:"true"`
+	Timeout     time.Duration `yaml:"timeout" env-default:"3s"`
+	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
+}
+
+type Cache struct {
+	TTL   time.Duration `yaml:"ttl" env-default:"15m"`
+	Limit int           `yaml:"limit" env-default:"1000"`
 }
 
 type Kafka struct {
