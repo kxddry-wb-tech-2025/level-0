@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ilyakaznacheev/cleanenv"
 	"l0/internal/config"
 	"os"
 	"strings"
+
+	"github.com/ilyakaznacheev/cleanenv"
 
 	// migration
 	"github.com/golang-migrate/migrate/v4"

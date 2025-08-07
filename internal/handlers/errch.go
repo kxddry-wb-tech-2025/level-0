@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"context"
-	"github.com/kxddry/go-utils/pkg/logger/handlers/sl"
 	"log/slog"
+
+	"github.com/kxddry/go-utils/pkg/logger/handlers/sl"
 )
 
 func HandleErrors(ctx context.Context, log *slog.Logger, errCh <-chan error) {

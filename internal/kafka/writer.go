@@ -3,11 +3,12 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/compress"
 	"l0/internal/config"
 	"l0/internal/models"
 	"time"
+
+	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/compress"
 )
 
 type Writer[T models.Order] struct {
