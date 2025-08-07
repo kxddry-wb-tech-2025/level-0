@@ -76,7 +76,7 @@ func (w Writer[T]) CheckAlive(brokers []string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_, err = conn.Controller()
 	return err
 }
