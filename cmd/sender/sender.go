@@ -36,7 +36,7 @@ func main() {
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
-		return c.JSON(http.StatusOK, "sent order")
+		return c.String(http.StatusOK, "sent order")
 	})
 
 	e.GET("/save", func(c echo.Context) error {

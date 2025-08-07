@@ -25,7 +25,7 @@ func (s *Storage) begin(ctx c.Context) (*sql.Tx, error) {
 	return s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
 
-func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) (err error) {
+func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) error {
 	const op = "storage.postgres.SaveOrder"
 	tx, err := s.begin(ctx)
 	if err != nil {

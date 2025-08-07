@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-playground/validator/v10"
 	initCfg "github.com/kxddry/go-utils/pkg/config"
 	initLog "github.com/kxddry/go-utils/pkg/logger"
 	"github.com/kxddry/go-utils/pkg/logger/handlers/sl"
@@ -27,6 +28,7 @@ func main() {
 	initCfg.MustParseConfig(&cfg)
 	log := initLog.SetupLogger(cfg.Env)
 	log.Debug("debug enabled")
+	validate := validator.New()
 
 	st, err := postgres.NewStorage(cfg.Storage)
 	if err != nil {
@@ -42,7 +44,7 @@ func main() {
 	kr := kafka.NewReader(cfg.Kafka.Reader, cfg.Kafka.Brokers)
 	dlq := kafka.NewWriter(cfg.Kafka.Writer, cfg.Kafka.Brokers)
 	msgCh, errCh, commitFunc := kr.Messages(ctx)
-	saveErrCh := handlers.HandleSaves(ctx, log, st, msgCh, dlq, commitFunc)
+	saveErrCh := handlers.HandleSaves(ctx, log, st, msgCh, dlq, commitFunc, validate)
 
 	handlers.HandleErrors(ctx, log, errCh)
 	handlers.HandleErrors(ctx, log, saveErrCh)
