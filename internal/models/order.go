@@ -1,5 +1,6 @@
 package models
 
+// Order is a structure for orders
 type Order struct {
 	OrderUID    string `json:"order_uid" validate:"required,uuid4|alphanum"`
 	TrackNumber string `json:"track_number" validate:"required"`
@@ -19,6 +20,7 @@ type Order struct {
 	OofShard          string `json:"oof_shard" validate:"required"`
 }
 
+// Delivery is ...
 type Delivery struct {
 	Name    string `json:"name" validate:"required"`
 	Phone   string `json:"phone" validate:"required,e164"`
@@ -29,6 +31,7 @@ type Delivery struct {
 	Email   string `json:"email" validate:"required,email"`
 }
 
+// Payment is ...
 type Payment struct {
 	Transaction  string `json:"transaction" validate:"required"`
 	RequestID    string `json:"request_id" validate:"omitempty"`
@@ -42,6 +45,7 @@ type Payment struct {
 	CustomFee    int    `json:"custom_fee" validate:"gte=0"`
 }
 
+// Item ...
 type Item struct {
 	ChrtID      int64  `json:"chrt_id" validate:"required"`
 	TrackNumber string `json:"track_number" validate:"required"`

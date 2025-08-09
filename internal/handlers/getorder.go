@@ -11,16 +11,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// OrderGetter gets orders
 type OrderGetter interface {
 	GetOrder(context.Context, string) (*models.Order, error)
 }
 
+// Cacher saves orders and fetches them quicker than persistent storage
 type Cacher interface {
 	OrderGetter
 	OrderSaver
 	LoadOrders(context.Context, []*models.Order) error
 }
 
+// GetOrderHandler handles GET requests
 func GetOrderHandler(getter OrderGetter, cacher Cacher) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		ctx := c.Request().Context()

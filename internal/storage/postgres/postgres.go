@@ -9,7 +9,6 @@ import (
 	"l0/internal/models"
 	"l0/internal/storage"
 
-	_ "github.com/lib/pq"
 	"golang.org/x/net/context"
 )
 
@@ -17,6 +16,7 @@ func fmterr(op string, err error) error {
 	return fmt.Errorf("%s: %w", op, err)
 }
 
+// Storage is an interface for PostgreSQL storage.
 type Storage struct {
 	db *sql.DB
 }
@@ -25,6 +25,7 @@ func (s *Storage) begin(ctx c.Context) (*sql.Tx, error) {
 	return s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
 
+// SaveOrder saves an order.
 func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) error {
 	const op = "storage.postgres.SaveOrder"
 	tx, err := s.begin(ctx)
@@ -47,19 +48,19 @@ func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) error {
 	}
 
 	// check address
-	var addrId uint
+	var addrID uint
 	err = tx.QueryRow(`INSERT INTO addresses (customer_id, zip, city, address, region) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING RETURNING id`,
-		order.CustomerID, order.Delivery.Zip, order.Delivery.City, order.Delivery.Address, order.Delivery.Region).Scan(&addrId)
+		order.CustomerID, order.Delivery.Zip, order.Delivery.City, order.Delivery.Address, order.Delivery.Region).Scan(&addrID)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = tx.QueryRow(`SELECT id FROM addresses WHERE customer_id = $1 AND zip = $2 AND city = $3 AND address = $4 AND region = $5`,
-			order.CustomerID, order.Delivery.Zip, order.Delivery.City, order.Delivery.Address, order.Delivery.Region).Scan(&addrId)
+			order.CustomerID, order.Delivery.Zip, order.Delivery.City, order.Delivery.Address, order.Delivery.Region).Scan(&addrID)
 	}
 	if err != nil {
 		return fmterr(op, err)
 	}
 
 	// check correlation between user and address
-	_, err = tx.Exec(`INSERT INTO users_addresses (user_id, address_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, uid, addrId)
+	_, err = tx.Exec(`INSERT INTO users_addresses (user_id, address_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, uid, addrID)
 	if err != nil {
 		return fmterr(op, err)
 	}
@@ -78,7 +79,7 @@ func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) error {
 	_, err = tx.Exec(`INSERT INTO orders 
     (order_uid, track_number, entry, delivery, payment, locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT DO NOTHING`,
-		order.OrderUID, order.TrackNumber, order.Entry, addrId, p.Transaction, order.Locale, order.InternalSignature, order.CustomerID, order.DeliveryService,
+		order.OrderUID, order.TrackNumber, order.Entry, addrID, p.Transaction, order.Locale, order.InternalSignature, order.CustomerID, order.DeliveryService,
 		order.ShardKey, order.SmID, order.DateCreated, order.OofShard)
 	if err != nil {
 		return fmterr(op, err)
@@ -106,7 +107,8 @@ func (s *Storage) SaveOrder(ctx c.Context, order *models.Order) error {
 	return nil
 }
 
-func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err error) {
+// GetOrder gets an order.
+func (s *Storage) GetOrder(ctx c.Context, orderUID string) (_ *models.Order, err error) {
 	const op = "storage.postgres.GetOrder"
 	order := models.Order{}
 	tx, err := s.begin(ctx)
@@ -116,12 +118,12 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 	defer func() { _ = tx.Rollback() }()
 
 	var (
-		deliveryId  uint
+		deliveryID  uint
 		transaction string
 	)
 	err = tx.QueryRow(`SELECT order_uid, track_number, entry, delivery, payment, locale, internal_signature,
-       customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM orders WHERE order_uid = $1`, orderUid).Scan(
-		&order.OrderUID, &order.TrackNumber, &order.Entry, &deliveryId, &transaction, &order.Locale, &order.InternalSignature, &order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard,
+       customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM orders WHERE order_uid = $1`, orderUID).Scan(
+		&order.OrderUID, &order.TrackNumber, &order.Entry, &deliveryID, &transaction, &order.Locale, &order.InternalSignature, &order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -145,7 +147,7 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 				FROM addresses a
 						 JOIN users u ON u.customer_id = a.customer_id
 				WHERE a.id = $1;
-`, deliveryId).Scan(&d.Name, &d.Phone, &d.Zip, &d.City, &d.Address, &d.Region, &d.Email)
+`, deliveryID).Scan(&d.Name, &d.Phone, &d.Zip, &d.City, &d.Address, &d.Region, &d.Email)
 	if err != nil {
 		return nil, fmterr(op, err)
 	}
@@ -178,6 +180,7 @@ func (s *Storage) GetOrder(ctx c.Context, orderUid string) (_ *models.Order, err
 	return &order, nil
 }
 
+// NewStorage initializes the storage.
 func NewStorage(s config.Storage) (*Storage, error) {
 	const op = "storage.postgres.NewStorage"
 	url := fmt.Sprintf(
@@ -191,28 +194,7 @@ func NewStorage(s config.Storage) (*Storage, error) {
 	return &Storage{db: db}, db.Ping()
 }
 
-func (s *Storage) AllOrderUIDs(ctx context.Context) ([]string, error) {
-	const op = "storage.postgres.AllOrderUIDs"
-	rows, err := s.db.QueryContext(ctx, `SELECT order_uid FROM orders ORDER BY order_uid`)
-	if err != nil {
-		return nil, fmterr(op, err)
-	}
-	defer func() { _ = rows.Close() }()
-	var uids []string
-	for rows.Next() {
-		var uid string
-		err = rows.Scan(&uid)
-		if err != nil {
-			return nil, fmterr(op, err)
-		}
-		uids = append(uids, uid)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmterr(op, err)
-	}
-	return uids, nil
-}
-
+// AllOrders fetches all orders from the database and returns them
 func (s *Storage) AllOrders(ctx context.Context) ([]*models.Order, error) {
 	const op = "storage.postgres.AllOrders"
 	uids, err := s.db.QueryContext(ctx, `SELECT order_uid FROM orders ORDER BY order_uid`)

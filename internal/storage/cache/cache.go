@@ -15,6 +15,7 @@ type cacheEntry struct {
 	lruElem *list.Element
 }
 
+// Cache uses TTL + LRU for cache invalidation.
 type Cache struct {
 	mp       map[string]*cacheEntry
 	mu       *sync.Mutex
@@ -24,6 +25,7 @@ type Cache struct {
 	lru      *list.List
 }
 
+// NewCache creates cache
 func NewCache(ttl time.Duration, limit int) *Cache {
 	cc := &Cache{
 		mp:       make(map[string]*cacheEntry),
@@ -38,6 +40,7 @@ func NewCache(ttl time.Duration, limit int) *Cache {
 	return cc
 }
 
+// SaveOrder saves
 func (c *Cache) SaveOrder(ctx c.Context, order *models.Order) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -68,31 +71,32 @@ func (c *Cache) removeLRU() {
 	if back == nil {
 		return
 	}
-	orderId := back.Value.(string)
-	c.remove(orderId)
+	orderID := back.Value.(string)
+	c.remove(orderID)
 }
 
-func (c *Cache) remove(orderId string) {
-	entry, ok := c.mp[orderId]
+func (c *Cache) remove(orderID string) {
+	entry, ok := c.mp[orderID]
 	if !ok {
 		return
 	}
 	c.lru.Remove(entry.lruElem)
-	delete(c.mp, orderId)
+	delete(c.mp, orderID)
 }
 
-func (c *Cache) GetOrder(ctx c.Context, orderId string) (*models.Order, error) {
+// GetOrder gets an order from the cache
+func (c *Cache) GetOrder(ctx c.Context, orderID string) (*models.Order, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	entry, ok := c.mp[orderId]
+	entry, ok := c.mp[orderID]
 	if !ok {
 		return nil, storage.ErrOrderNotFound
 	}
 
 	// cache invalidation
 	if time.Since(entry.time) > c.ttl {
-		c.remove(orderId)
+		c.remove(orderID)
 		return nil, storage.ErrOrderNotFound
 	}
 
@@ -101,6 +105,7 @@ func (c *Cache) GetOrder(ctx c.Context, orderId string) (*models.Order, error) {
 	return &entry.order, nil
 }
 
+// LoadOrders loads orders provided
 func (c *Cache) LoadOrders(ctx c.Context, orders []*models.Order) error {
 	for _, order := range orders {
 		err := c.SaveOrder(ctx, order)
@@ -133,6 +138,7 @@ func (c *Cache) removeExpired() {
 	}
 }
 
+// Stop stops.
 func (c *Cache) Stop() {
 	close(c.stopChan)
 }

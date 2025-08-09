@@ -8,7 +8,6 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/kxddry/go-utils v1.0.1
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/lib/pq v1.10.9
 	github.com/segmentio/kafka-go v0.4.48
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.40.0
@@ -27,6 +26,7 @@ require (
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pierrec/lz4/v4 v4.1.16 // indirect

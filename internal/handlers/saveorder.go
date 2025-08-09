@@ -11,10 +11,12 @@ import (
 	"github.com/kxddry/go-utils/pkg/logger/handlers/sl"
 )
 
+// OrderSaver can save orders
 type OrderSaver interface {
 	SaveOrder(context.Context, *models.Order) error
 }
 
+// Writer can write
 type Writer interface {
 	Write(ctx context.Context, record models.Order) error
 }

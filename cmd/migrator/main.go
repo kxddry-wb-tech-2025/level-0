@@ -18,13 +18,13 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-type MigrationConfig struct {
+type migrationConfig struct {
 	St            config.Storage `yaml:"storage" env-required:"true"` // use dbname = postgres here
 	Operation     string         `env:"OPERATION" yaml:"operation" env-default:"up"`
-	DbsMigrations []Entry        `yaml:"dbs_migrations" env-required:"true"`
+	DbsMigrations []entry        `yaml:"dbs_migrations" env-required:"true"`
 }
 
-type Entry struct {
+type entry struct {
 	Name string `yaml:"name"` // DBName
 	Path string `yaml:"path"` // Path for migrations
 }
@@ -35,7 +35,7 @@ func main() {
 		panic("CONFIG_PATH env variable not set")
 	}
 
-	var cfg MigrationConfig
+	var cfg migrationConfig
 	if err := cleanenv.ReadConfig(confPath, &cfg); err != nil {
 		panic(err)
 	}
@@ -49,19 +49,19 @@ func main() {
 		name, path := m.Name, m.Path
 		ccfg := cfg.St
 		ccfg.DBName = name
-		err := EnsureDBexists(name, ccfg)
+		err := ensureDBexists(name, ccfg)
 		if err != nil {
 			panic(err)
 		}
-		link := Link(ccfg)
+		link := link(ccfg)
 
-		DoOneMigration(link, path, op)
+		doOneMigration(link, path, op)
 	}
 
 	fmt.Println("migration successful")
 }
 
-func DoOneMigration(link, path, op string) {
+func doOneMigration(link, path, op string) {
 	m, err := migrate.New("file://"+path, link)
 	if err != nil {
 		panic(err)
@@ -92,17 +92,17 @@ func DoOneMigration(link, path, op string) {
 	}
 }
 
-func Link(cfg config.Storage) string {
+func link(cfg config.Storage) string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode)
 }
 
-func DataSourceName(cfg config.Storage) string {
+func dataSourceName(cfg config.Storage) string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode)
 }
 
-func EnsureDBexists(dbname string, adminCfg config.Storage) error {
+func ensureDBexists(dbname string, adminCfg config.Storage) error {
 	adminCfg.DBName = "postgres"
-	_db, err := sql.Open("postgres", DataSourceName(adminCfg))
+	_db, err := sql.Open("postgres", dataSourceName(adminCfg))
 	if err != nil {
 		return err
 	}

@@ -11,10 +11,12 @@ import (
 	"github.com/segmentio/kafka-go/compress"
 )
 
+// Writer ...
 type Writer[T models.Order] struct {
 	w *kafka.Writer
 }
 
+// Write ...
 func (w Writer[T]) Write(ctx context.Context, record T) error {
 	msgBytes, err := json.Marshal(record)
 	if err != nil {
@@ -26,6 +28,7 @@ func (w Writer[T]) Write(ctx context.Context, record T) error {
 	return w.w.WriteMessages(ctx, msg)
 }
 
+// NewWriter ...
 func NewWriter[T models.Order](cfg config.WriterConfig, brokers []string) Writer[T] {
 	var compression kafka.Compression
 
@@ -68,6 +71,7 @@ func NewWriter[T models.Order](cfg config.WriterConfig, brokers []string) Writer
 	return Writer[T]{w: w}
 }
 
+// CheckAlive ...
 func (w Writer[T]) CheckAlive(brokers []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()

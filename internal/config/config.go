@@ -2,6 +2,7 @@ package config
 
 import "time"
 
+// Config is a structure with configs
 type Config struct {
 	Env     string  `yaml:"env" env-default:"dev"` // local, dev, prod
 	Storage Storage `yaml:"storage"`
@@ -9,6 +10,8 @@ type Config struct {
 	Server  Server  `yaml:"server"`
 	Cache   Cache   `yaml:"cache"`
 }
+
+// Storage is a structure with configs for PostgreSQL
 type Storage struct {
 	Host     string `yaml:"host" env-required:"true"`
 	Port     int    `yaml:"port" env-required:"true"`
@@ -18,23 +21,27 @@ type Storage struct {
 	SSLMode  string `yaml:"sslmode" env-default:"require"`
 }
 
+// Server is a structure with configs for an HTTP server
 type Server struct {
 	Address     string        `yaml:"address" env-required:"true"`
 	Timeout     time.Duration `yaml:"timeout" env-default:"3s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
 
+// Cache is a structure with configs for creating cache
 type Cache struct {
 	TTL   time.Duration `yaml:"ttl" env-default:"15m"`
 	Limit int           `yaml:"limit" env-default:"1000"`
 }
 
+// Kafka is a structure with configs for a broker like Kafka
 type Kafka struct {
 	Brokers []string     `yaml:"brokers" env-required:"true"`
 	Reader  ReaderConfig `yaml:"reader" env-required:"true"`
 	Writer  WriterConfig `yaml:"writer" env-required:"true"`
 }
 
+// ReaderConfig is a structure with config for kafka reader
 type ReaderConfig struct {
 	Topic          string        `yaml:"topic" env-required:"true"`
 	GroupID        string        `yaml:"group_id" env-required:"true"`
@@ -44,6 +51,7 @@ type ReaderConfig struct {
 	StartOffset    string        `yaml:"start_offset" env-default:"latest"` // earliest | latest
 }
 
+// WriterConfig is a structure with config for kafka writer
 type WriterConfig struct {
 	Topic           string        `yaml:"topic" env-required:"true"`
 	ClientID        string        `yaml:"client_id" env-required:"true"`

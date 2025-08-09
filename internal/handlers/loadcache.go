@@ -6,11 +6,13 @@ import (
 	"l0/internal/models"
 )
 
+// Database is an interface for a SQL or NoSQL database
 type Database interface {
 	OrderGetter
 	AllOrders(ctx context.Context) ([]*models.Order, error)
 }
 
+// LoadCache fetches all orders from the database
 func LoadCache(ctx context.Context, cacher Cacher, db Database) error {
 	const op = "handlers.LoadCache"
 

@@ -9,17 +9,21 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// Reader reads
 type Reader struct {
 	r *kafka.Reader
 }
 
+// Message messages
 type Message struct {
 	Value models.Order
 	Raw   kafka.Message
 }
 
+// CommitFunc is so tired of creating these useless ass comments
 type CommitFunc func(ctx c.Context, m kafka.Message) error
 
+// NewReader is, too.
 func NewReader(cfg config.ReaderConfig, brokers []string) Reader {
 	var startOffset int64
 	switch cfg.StartOffset {
@@ -44,6 +48,7 @@ func NewReader(cfg config.ReaderConfig, brokers []string) Reader {
 	}
 }
 
+// Messages now
 func (r Reader) Messages(ctx c.Context) (<-chan Message, <-chan error, CommitFunc) {
 	msgCh := make(chan Message)
 	errCh := make(chan error, 1)
